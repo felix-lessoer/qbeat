@@ -1,0 +1,9 @@
+- key: qbeat
+  title: qbeat
+  description:
+  fields:
+    - name: counter
+      type: long
+      required: true
+      description: >
+        PLEASE UPDATE DOCUMENTATION

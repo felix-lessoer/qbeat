@@ -1,0 +1,10 @@
+- module: elasticsearch
+  metricsets:
+    - node
+    - node_stats
+    #- index
+    #- index_summary
+    #- shard
+    #- ml_job
+  period: 10s
+  hosts: ["localhost:9200"]
