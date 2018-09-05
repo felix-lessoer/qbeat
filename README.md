@@ -1,6 +1,7 @@
 # Qbeat
 
-Welcome to Qbeat.
+Welcome to Qbeat. This beat is used to get monitoring / statistics data out of IBM MQ.
+It is currently under development so there is no guarantee that it is working fine.
 
 Ensure that this folder is at the following location:
 `${GOPATH}/src/github.com/felix-lessoer/qbeat`
