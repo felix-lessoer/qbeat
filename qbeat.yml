@@ -7,16 +7,16 @@
 
 qbeat:
 
-  # Defines how often an event is sent to the output. It also defines the interval for collecting
-  # queue data. If you chance this it can lead to unexpected behaviour in your visualization
-  period: 60s
+  # Defines how often an event is sent to the output
+  period: 10s
+  #period: 10s
 
   #Defines the queuemanger you want to monitor.
-  queueManager: ""
+  queueManager: "QM1"
 
   #Defines the local queues to gets stats from. Defauls to * which indicates that everything
   #available queue from given queuemanger should be monitored
-  #localQueue: "*"
+  localQueue: "*"
 
   #Defines how to get the statistics
   # --PubSub: Works since IBM MQ 9
@@ -88,7 +88,7 @@ setup.kibana:
 #-------------------------- Elasticsearch output ------------------------------
 #output.elasticsearch:
   # Array of hosts to connect to.
-  #hosts: ["localhost:9200"]
+  hosts: ["localhost:9200"]
 
   # Optional protocol and basic auth credentials.
   #protocol: "https"
@@ -114,7 +114,7 @@ setup.kibana:
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-#logging.level: debug
+logging.level: debug
 
 # At debug level, you can selectively enable logging only for some components.
 # To enable all selectors use ["*"]. Examples of other selectors are "beat",

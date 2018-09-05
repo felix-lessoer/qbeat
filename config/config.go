@@ -5,21 +5,25 @@ package config
 
 import (
 	"time"
-
-	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
+type ConnectionConfig struct {
+	ClientMode bool
+	UserId     string
+	Password   string
+}
+
 type Config struct {
-	Period time.Duration `config:"period"`
-	QueueManager  string       `config:"queueManager"`
-	LocalQueue 		string       `config:"localQueue"`
-	Mode 					string       `config:"mode"`
-	CC						mqmetric.ConnectionConfig
+	Period       time.Duration `config:"period"`
+	QueueManager string        `config:"queueManager"`
+	LocalQueue   string        `config:"localQueue"`
+	Mode         string        `config:"mode"`
+	CC           ConnectionConfig
 }
 
 var (
 	DefaultConfig = Config{
-		Mode:	"PubSub",
+		Mode:       "PubSub",
 		LocalQueue: "*",
 	}
 )
