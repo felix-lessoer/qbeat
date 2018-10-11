@@ -17,13 +17,15 @@ type Config struct {
 	Period       time.Duration `config:"period"`
 	QueueManager string        `config:"queueManager"`
 	LocalQueue   string        `config:"localQueue"`
-	Mode         string        `config:"mode"`
+	Channel      string        `config:"channel"`
+	PubSub       bool          `config:"pubSub"`
 	CC           ConnectionConfig
 }
 
 var (
 	DefaultConfig = Config{
-		Mode:       "PubSub",
+		PubSub:     false,
 		LocalQueue: "*",
+		Channel:    "*",
 	}
 )

@@ -143,40 +143,84 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 	var err error
 	var event beat.Event
 
-	qMetadata, err := getQueueMetadata(bt.config.LocalQueue)
-	qStatus, err := getQueueStatus(bt.config.LocalQueue)
-	qStatistics, err := getQueueStatistics(bt.config.LocalQueue)
+	if bt.config.Channel != "" {
+		chStatus, err := getChannelStatus(bt.config.Channel)
+		//logp.Info("chStatus: %v", chStatus)
 
-	logp.Info("qMetadata: %v", qMetadata)
-	logp.Info("qStatus: %v", qStatus)
-	logp.Info("qStatistics: %v", qStatistics)
-
-	for _, elem := range qStatistics {
-		event = beat.Event{
-			Timestamp: time.Now(),
-			Fields: common.MapStr{
-				"type":       b.Info.Name,
-				"qmgr":       bt.config.QueueManager,
-				"queue":      elem.QueueName,
-				"metricset":  elem.Metricset,
-				"metrictype": elem.Metrictype,
-			},
-		}
-		for key, value := range qMetadata[elem.QueueName].Values {
-			event.Fields[key] = value
-		}
-		for key, value := range qStatus[elem.QueueName].Values {
-			event.Fields[key] = value
-		}
-		for key, value := range elem.Values {
-			event.Fields[key] = value
+		if err != nil {
+			return err
 		}
 
-		// Always ignore the first loop through as there might
-		// be accumulated stuff from a while ago, and lead to
-		// a misleading range on graphs.
-		if !first {
-			bt.client.Publish(event)
+		for _, elem := range chStatus {
+			event = beat.Event{
+				Timestamp: time.Now(),
+				Fields: common.MapStr{
+					"type":       b.Info.Name,
+					"qmgr":       bt.config.QueueManager,
+					"channel":    elem.ChannelName,
+					"metricset":  elem.Metricset,
+					"metrictype": elem.Metrictype,
+				},
+			}
+			for key, value := range chStatus[elem.ChannelName].Values {
+				event.Fields[key] = value
+			}
+			if !first {
+				bt.client.Publish(event)
+			}
+		}
+	}
+
+	if bt.config.LocalQueue != "" {
+		qMetadata, err := getQueueMetadata(bt.config.LocalQueue)
+
+		if err != nil {
+			return err
+		}
+
+		qStatus, err := getQueueStatus(bt.config.LocalQueue)
+
+		if err != nil {
+			return err
+		}
+
+		qStatistics, err := getQueueStatistics(bt.config.LocalQueue)
+
+		if err != nil {
+			return err
+		}
+
+		//logp.Info("qMetadata: %v", qMetadata)
+		//logp.Info("qStatus: %v", qStatus)
+		//logp.Info("qStatistics: %v", qStatistics)
+
+		for _, elem := range qStatistics {
+			event = beat.Event{
+				Timestamp: time.Now(),
+				Fields: common.MapStr{
+					"type":       b.Info.Name,
+					"qmgr":       bt.config.QueueManager,
+					"queue":      elem.QueueName,
+					"metricset":  elem.Metricset,
+					"metrictype": elem.Metrictype,
+				},
+			}
+			for key, value := range qMetadata[elem.QueueName].Values {
+				event.Fields[key] = value
+			}
+			for key, value := range qStatus[elem.QueueName].Values {
+				event.Fields[key] = value
+			}
+			for key, value := range elem.Values {
+				event.Fields[key] = value
+			}
+
+			// Always ignore the first loop through as there might
+			// be accumulated stuff from a while ago, and lead to
+			// a misleading range on graphs.
+			if !first {
+				bt.client.Publish(event)
+			}
 		}
 	}
 
@@ -194,19 +238,21 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		return err
 	}
 
-	//Set the mode based on config
-	var legacy bool
-	if bt.config.Mode == "PubSub" {
-		legacy = false
-	}
-	if bt.config.Mode == "Legacy" {
-		legacy = true
+	if bt.config.LocalQueue != "" || bt.config.Channel != "" {
+		err = connectLegacyMode(bt)
+		if err != nil {
+			logp.Info("Wasn't able to connect due to an error")
+			return err
+		}
 	}
 
-	if legacy {
-		err = connectLegacyMode(bt)
-	} else {
+	if bt.config.PubSub {
 		err = connectPubSub(bt)
+
+		if err != nil {
+			logp.Info("Wasn't able to connect due to an error")
+			return err
+		}
 	}
 
 	ticker := time.NewTicker(bt.config.Period)
@@ -217,9 +263,10 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		case <-ticker.C:
 		}
 
-		if legacy {
+		if bt.config.LocalQueue != "" || bt.config.Channel != "" {
 			err = collectLegacy(bt, b)
-		} else {
+		}
+		if bt.config.PubSub {
 			collectPubSub(bt, b)
 		}
 

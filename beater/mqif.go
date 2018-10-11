@@ -31,11 +31,11 @@ import (
 )
 
 var (
-	qMgr      ibmmq.MQQueueManager
-	cmdQObj   ibmmq.MQObject
-	replyQObj ibmmq.MQObject
-	statsQObj ibmmq.MQObject
-	getBuffer = make([]byte, 32768)
+	qMgrPubSub ibmmq.MQQueueManager
+	cmdQObj    ibmmq.MQObject
+	replyQObj  ibmmq.MQObject
+	statsQObj  ibmmq.MQObject
+	getBuffer  = make([]byte, 32768)
 
 	qmgrConnected     = false
 	queuesOpened      = false
@@ -76,7 +76,7 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		gocno.SecurityParms = gocsp
 	}
 
-	qMgr, err = ibmmq.Connx(qMgrName, gocno)
+	qMgrPubSub, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
 	}
@@ -90,7 +90,7 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
 
-		cmdQObj, err = qMgr.Open(mqod, openOptions)
+		cmdQObj, err = qMgrPubSub.Open(mqod, openOptions)
 
 	}
 
@@ -100,7 +100,7 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = statsQ
-		statsQObj, err = qMgr.Open(mqod, openOptions)
+		statsQObj, err = qMgrPubSub.Open(mqod, openOptions)
 		if err == nil {
 			statsQueuesOpened = true
 		}
@@ -112,7 +112,7 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
-		replyQObj, err = qMgr.Open(mqod, openOptions)
+		replyQObj, err = qMgrPubSub.Open(mqod, openOptions)
 		if err == nil {
 			queuesOpened = true
 		}
@@ -153,7 +153,7 @@ func EndConnection() {
 
 	// MQDISC regardless of other errors
 	if qmgrConnected {
-		qMgr.Disc()
+		qMgrPubSub.Disc()
 	}
 
 }
@@ -209,7 +209,7 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 
 	mqsd.ObjectString = topic
 
-	subObj, err := qMgr.Sub(mqsd, &replyQObj)
+	subObj, err := qMgrPubSub.Sub(mqsd, &replyQObj)
 	if err != nil {
 		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v", topic, err)
 	}

@@ -16,18 +16,22 @@ qbeat:
 
   #Defines the local queues to gets stats from. Defauls to * which indicates that everything
   #available queue from given queuemanger should be monitored
-  localQueue: "*"
+  #Set it to "" to not monitor anything in this module
+  #localQueue: "*"
+  
+  #Defines the channel to monitor. Defauls to * which indicates that everything
+  #available channel from given queuemanger should be monitored
+  #Set it to "" to not monitor anything in this module
+  #channel: "*"
 
-  #Defines how to get the statistics
-  # --PubSub: Works since IBM MQ 9
-  # --Legacy: Works for all IBM MQ versions, but you only get a very limited Amount
-  #           of fields
-  #mode: "PubSub"
+  #Defines whether the queue and queuemanger statistics should be collected via 
+  #the pub/sub methods of IBM MQ since v.9.0
+  #pubSub: true
 
 #==================== Elasticsearch template setting ==========================
 
 setup.template.settings:
-  index.number_of_shards: 3
+  index.number_of_shards: 1
   #index.codec: best_compression
   #_source.enabled: false
 
@@ -114,7 +118,7 @@ output.elasticsearch:
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-logging.level: debug
+#logging.level: debug
 
 # At debug level, you can selectively enable logging only for some components.
 # To enable all selectors use ["*"]. Examples of other selectors are "beat",
