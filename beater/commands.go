@@ -1,7 +1,6 @@
 package beater
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/elastic/beats/libbeat/logp"
@@ -15,7 +14,7 @@ type Response struct {
 	Metricset   string
 	Metrictype  string
 	MetricName  string
-	Values      map[string]string
+	Values      map[string]interface{}
 }
 
 var (
@@ -99,7 +98,7 @@ func parseResponse() (map[string]*Response, error) {
 
 	for err == nil {
 		resp = new(Response)
-		resp.Values = make(map[string]string)
+		resp.Values = make(map[string]interface{})
 		buf, err = GetMessageWithHObj(true, replyQObj)
 		elemList, _ := ParsePCFResponse(buf)
 
@@ -137,9 +136,8 @@ func parseResponse() (map[string]*Response, error) {
 					paramName := normalizeMetricNames(elem.Parameter)
 					switch elem.Type {
 					case ibmmq.MQCFT_INTEGER:
-						value := strconv.FormatInt(elem.Int64Value[0], 10)
-						resp.Values[paramName] = value
-						logp.Debug("", "Try to translate %v: %v", paramName, value)
+						resp.Values[paramName] = elem.Int64Value[0]
+						logp.Debug("", "Try to translate %v: %v", paramName, elem.Int64Value[0])
 						strValue := translateValue(paramName, elem.Int64Value[0])
 						if strValue != "" {
 							resp.Values[paramName+"_str"] = strValue
