@@ -1,7 +1,9 @@
 package beater
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elastic/beats/libbeat/beat"
@@ -16,6 +18,13 @@ type Qbeat struct {
 	done   chan struct{}
 	config config.Config
 	client beat.Client
+}
+
+type RequestObject struct {
+	Commands []struct {
+		Cmd    string
+		Params map[string]interface{}
+	}
 }
 
 var (
@@ -128,7 +137,7 @@ func collectPubSub(bt *Qbeat, b *beat.Beat) {
 func connectLegacyMode(bt *Qbeat) error {
 	logp.Info("Connect in legacy mode")
 
-	err = connectLegacy(bt.config.QueueManager)
+	err = connectLegacy(bt.config.QueueManager, bt.config.RemoteQueueManager)
 
 	if err != nil {
 		return err
@@ -138,90 +147,148 @@ func connectLegacyMode(bt *Qbeat) error {
 	return err
 }
 
+func createEvents(eventType string, qmgrName string, responseObj map[string]*Response) []beat.Event {
+	var events []beat.Event
+
+	for id, elem := range responseObj {
+		event := beat.Event{
+			Timestamp: time.Now(),
+			Fields: common.MapStr{
+				"type":         eventType,
+				"qmgr":         qmgrName,
+				"metricset":    elem.Metricset,
+				"metrictype":   elem.Metrictype,
+				"targetObject": elem.TargetObject,
+			},
+		}
+		for key, value := range responseObj[id].Values {
+			event.Fields[key] = value
+		}
+
+		events = append(events, event)
+	}
+	return events
+}
+
+func mergeEventsWithResponseObj(events []beat.Event, responseObj map[string]*Response) []beat.Event {
+
+	for id, _ := range responseObj {
+		for _, event := range events {
+			if id == event.Fields["targetObject"] {
+				for key, value := range responseObj[id].Values {
+					event.Fields[key] = value
+				}
+			}
+		}
+	}
+	return events
+}
+
+func generateConnectedObjectsField(events []beat.Event) []beat.Event {
+	for _, event := range events {
+		var connections []string
+		connections = make([]string, 0)
+		connections = append(connections, event.Fields["qmgr"].(string))
+		connections = append(connections, event.Fields["targetObject"].(string))
+		if event.Fields["mqcach_xmit_q_name"] != nil {
+			connections = append(connections, event.Fields["mqcach_xmit_q_name"].(string))
+		}
+		if event.Fields["mqca_remote_q_mgr_name"] != nil {
+			connections = append(connections, event.Fields["mqca_remote_q_mgr_name"].(string))
+		}
+		if event.Fields["mqca_remote_q_name"] != nil {
+			connections = append(connections, event.Fields["mqca_remote_q_name"].(string))
+		}
+		//Remove whitespaces
+		for _, connection := range connections {
+			connection = strings.TrimSpace(connection)
+		}
+		event.Fields["Conntections"] = connections
+	}
+	return events
+}
+
 func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 	//Collect queue statistics
 	var err error
-	var event beat.Event
+	var events []beat.Event
 
-	if bt.config.Channel != "" {
-		chStatus, err := getChannelStatus(bt.config.Channel)
-		//logp.Info("chStatus: %v", chStatus)
+	if bt.config.Advanced != "" {
+		logp.Info("Start collecting in advance object")
+		var requestObject RequestObject
+		err := json.Unmarshal([]byte(bt.config.Advanced), &requestObject)
 
 		if err != nil {
 			return err
 		}
+		logp.Info("Advanced json: %v", requestObject)
+		for _, command := range requestObject.Commands {
+			responseObj, err := getAdvancedResponse(command.Cmd, command.Params)
 
-		for _, elem := range chStatus {
-			event = beat.Event{
-				Timestamp: time.Now(),
-				Fields: common.MapStr{
-					"type":       b.Info.Name,
-					"qmgr":       bt.config.QueueManager,
-					"channel":    elem.ChannelName,
-					"metricset":  elem.Metricset,
-					"metrictype": elem.Metrictype,
-				},
+			if err != nil {
+				return err
 			}
-			for key, value := range chStatus[elem.ChannelName].Values {
-				event.Fields[key] = value
-			}
-			if !first {
-				bt.client.Publish(event)
-			}
+
+			events = append(events, createEvents(b.Info.Name, bt.config.QueueManager, responseObj)...)
 		}
+	}
+	if bt.config.QMgrStat {
+		qMgrMetadata, err := getQManagerMetadata()
+		if err != nil {
+			return err
+		}
+
+		qMgrStatus, err := getQManagerStatus()
+		if err != nil {
+			return err
+		}
+		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, qMgrMetadata)
+		events = append(events, mergeEventsWithResponseObj(tmpEvents, qMgrStatus)...)
+	}
+
+	if bt.config.Channel != "" {
+		chMetadata, err := getChannelMetadata(bt.config.Channel)
+		if err != nil {
+			return err
+		}
+		chStatus, err := getChannelStatus(bt.config.Channel)
+		if err != nil {
+			return err
+		}
+
+		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, chMetadata)
+		events = append(events, mergeEventsWithResponseObj(tmpEvents, chStatus)...)
 	}
 
 	if bt.config.LocalQueue != "" {
 		qMetadata, err := getQueueMetadata(bt.config.LocalQueue)
-
 		if err != nil {
 			return err
 		}
 
 		qStatus, err := getQueueStatus(bt.config.LocalQueue)
-
 		if err != nil {
 			return err
 		}
 
 		qStatistics, err := getQueueStatistics(bt.config.LocalQueue)
-
 		if err != nil {
 			return err
 		}
+		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, qMetadata)
+		tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatus)
+		events = append(events, mergeEventsWithResponseObj(tmpEvents, qStatistics)...)
+	}
 
-		//logp.Info("qMetadata: %v", qMetadata)
-		//logp.Info("qStatus: %v", qStatus)
-		//logp.Info("qStatistics: %v", qStatistics)
+	//Add a field that contains all connections to other MQ objects
+	// this helps to visualize via graph
+	events = generateConnectedObjectsField(events)
 
-		for _, elem := range qStatistics {
-			event = beat.Event{
-				Timestamp: time.Now(),
-				Fields: common.MapStr{
-					"type":       b.Info.Name,
-					"qmgr":       bt.config.QueueManager,
-					"queue":      elem.QueueName,
-					"metricset":  elem.Metricset,
-					"metrictype": elem.Metrictype,
-				},
-			}
-			for key, value := range qMetadata[elem.QueueName].Values {
-				event.Fields[key] = value
-			}
-			for key, value := range qStatus[elem.QueueName].Values {
-				event.Fields[key] = value
-			}
-			for key, value := range elem.Values {
-				event.Fields[key] = value
-			}
-
-			// Always ignore the first loop through as there might
-			// be accumulated stuff from a while ago, and lead to
-			// a misleading range on graphs.
-			if !first {
-				bt.client.Publish(event)
-			}
-		}
+	// Always ignore the first loop through as there might
+	// be accumulated stuff from a while ago, and lead to
+	// a misleading range on graphs.
+	if !first {
+		bt.client.PublishAll(events)
 	}
 
 	return err
@@ -238,7 +305,12 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		return err
 	}
 
-	if bt.config.LocalQueue != "" || bt.config.Channel != "" {
+	var legacy = false
+	if bt.config.LocalQueue != "" || bt.config.Channel != "" || bt.config.QMgrStat || bt.config.Advanced != "" {
+		legacy = true
+	}
+
+	if legacy {
 		err = connectLegacyMode(bt)
 		if err != nil {
 			logp.Info("Wasn't able to connect due to an error")
@@ -263,7 +335,7 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		case <-ticker.C:
 		}
 
-		if bt.config.LocalQueue != "" || bt.config.Channel != "" {
+		if legacy {
 			err = collectLegacy(bt, b)
 		}
 		if bt.config.PubSub {

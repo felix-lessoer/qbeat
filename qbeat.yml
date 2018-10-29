@@ -13,20 +13,25 @@ qbeat:
 
   #Defines the queuemanger you want to monitor.
   queueManager: "QM1"
+  queueManagerStatus: true
 
   #Defines the local queues to gets stats from. Defauls to * which indicates that everything
   #available queue from given queuemanger should be monitored
   #Set it to "" to not monitor anything in this module
-  #localQueue: "*"
-  
+  localQueue: "*"
+
   #Defines the channel to monitor. Defauls to * which indicates that everything
   #available channel from given queuemanger should be monitored
   #Set it to "" to not monitor anything in this module
-  #channel: "*"
+  channel: "*"
 
-  #Defines whether the queue and queuemanger statistics should be collected via 
+  #Defines whether the queue and queuemanger statistics should be collected via
   #the pub/sub methods of IBM MQ since v.9.0
   #pubSub: true
+
+  #The advanced JSON config enables you to send any PCF command to MQ and get the response back
+  #Hava a look at: https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.ref.adm.doc/q086870_.htm
+  #advanced: '{"commands":[{"cmd":"MQCMD_INQUIRE_PROCESS","params":{"MQCA_PROCESS_NAME":"*"}},{"cmd":"MQCMD_INQUIRE_CHANNEL_NAMES","params":{"MQCACH_CHANNEL_NAME":"*"}}]}'
 
 #==================== Elasticsearch template setting ==========================
 
@@ -82,8 +87,9 @@ setup.kibana:
 # The cloud.id setting overwrites the `output.elasticsearch.hosts` and
 # `setup.kibana.host` options.
 # You can find the `cloud.id` in the Elastic Cloud web UI.
-#cloud.id: ""
-#cloud.auth: ""
+# cloud.id: ""
+# cloud.auth: ""
+
 
 #================================ Outputs =====================================
 
@@ -118,7 +124,7 @@ output.elasticsearch:
 
 # Sets log level. The default log level is info.
 # Available log levels are: error, warning, info, debug
-#logging.level: debug
+# logging.level: debug
 
 # At debug level, you can selectively enable logging only for some components.
 # To enable all selectors use ["*"]. Examples of other selectors are "beat",

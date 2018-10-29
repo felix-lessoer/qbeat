@@ -1,27 +1,27 @@
 package beater
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/elastic/beats/libbeat/logp"
 
-	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"github.com/felix-lessoer/qbeat/beater/ibmmq"
 )
 
 type Response struct {
-	QueueName   string
-	ChannelName string
-	Metricset   string
-	Metrictype  string
-	MetricName  string
-	Values      map[string]interface{}
+	TargetObject string
+	Metricset    string
+	Metrictype   string
+	MetricName   string
+	Values       map[string]interface{}
 }
 
 var (
 	err error
 )
 
-func connectLegacy(qMgrName string) error {
+func connectLegacy(qMgrName string, remoteQMgrName string) error {
 	qMgr, err := ibmmq.Conn(qMgrName)
 
 	logp.Info("Connect to command queue")
@@ -30,6 +30,7 @@ func connectLegacy(qMgrName string) error {
 	openOptions := ibmmq.MQOO_OUTPUT | ibmmq.MQOO_FAIL_IF_QUIESCING
 	mqod.ObjectType = ibmmq.MQOT_Q
 	mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
+
 	cmdQObj, err = qMgr.Open(mqod, openOptions)
 
 	if err != nil {
@@ -48,26 +49,69 @@ func connectLegacy(qMgrName string) error {
 }
 
 func getQueueStatistics(localQueueName string) (map[string]*Response, error) {
+	var params = make(map[int32]string)
+	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
-	err = putCommand(ibmmq.MQCA_Q_NAME, localQueueName, ibmmq.MQCMD_RESET_Q_STATS)
+	err = putCommand(ibmmq.MQCMD_RESET_Q_STATS, params)
 	return parseResponse()
 }
 
 func getQueueStatus(localQueueName string) (map[string]*Response, error) {
+	var params = make(map[int32]string)
+	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
-	err = putCommand(ibmmq.MQCA_Q_NAME, localQueueName, ibmmq.MQCMD_INQUIRE_Q_STATUS)
+	err = putCommand(ibmmq.MQCMD_INQUIRE_Q_STATUS, params)
 	return parseResponse()
 }
 
 func getQueueMetadata(localQueueName string) (map[string]*Response, error) {
+	var params = make(map[int32]string)
+	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
-	err = putCommand(ibmmq.MQCA_Q_NAME, localQueueName, ibmmq.MQCMD_INQUIRE_Q)
+	err = putCommand(ibmmq.MQCMD_INQUIRE_Q, params)
+	return parseResponse()
+}
+
+func getChannelMetadata(channelName string) (map[string]*Response, error) {
+	var params = make(map[int32]string)
+	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
+
+	err = putCommand(ibmmq.MQCMD_INQUIRE_CHANNEL, params)
 	return parseResponse()
 }
 
 func getChannelStatus(channelName string) (map[string]*Response, error) {
+	var params = make(map[int32]string)
+	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
 
-	err = putCommand(ibmmq.MQCACH_CHANNEL_NAME, channelName, ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS)
+	err = putCommand(ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS, params)
+	return parseResponse()
+}
+
+func getQManagerMetadata() (map[string]*Response, error) {
+	var params = make(map[int32]string)
+
+	err = putCommand(ibmmq.MQCMD_INQUIRE_Q_MGR, params)
+	return parseResponse()
+}
+
+func getQManagerStatus() (map[string]*Response, error) {
+	var params = make(map[int32]string)
+
+	err = putCommand(ibmmq.MQCMD_INQUIRE_Q_MGR_STATUS, params)
+	return parseResponse()
+}
+
+func getAdvancedResponse(cmdString string, paramsInput map[string]interface{}) (map[string]*Response, error) {
+	var params = make(map[int32]string)
+	var cmd int32
+
+	cmd = GetMQConstant(cmdString)
+	for paramNameString, paramValue := range paramsInput {
+		params[GetMQConstant(paramNameString)] = paramValue.(string)
+	}
+
+	err = putCommand(cmd, params)
 	return parseResponse()
 }
 
@@ -79,6 +123,7 @@ func translateValue(key string, value int64) string {
 	mapping["mqiach_channel_status"] = "CHS"
 	mapping["mqiach_channel_type"] = "CHT"
 	mapping["mqia_q_type"] = "QT"
+	mapping["mqia_npm_class"] = "NPM"
 
 	if mapping[key] != "" {
 		returnName := ibmmq.MQItoString(mapping[key], int(value))
@@ -96,7 +141,9 @@ func parseResponse() (map[string]*Response, error) {
 	responses = make(map[string]*Response)
 	// Loop here to get every message in the queue
 
+	var count = 0
 	for err == nil {
+		count = count + 1
 		resp = new(Response)
 		resp.Values = make(map[string]interface{})
 		buf, err = GetMessageWithHObj(true, replyQObj)
@@ -110,29 +157,38 @@ func parseResponse() (map[string]*Response, error) {
 				return nil, err
 			}
 		}
-		var key = ""
+		//Set sequential id for initalization of the id in case that there is no other identifier
+		var key = strconv.Itoa(count)
 		for i := 0; i < len(elemList); i++ {
 			elem = elemList[i]
+			logp.Debug("", "Current parameter (Type: %v): %v ", ibmmq.MQItoString("CFT", int(elem.Type)), normalizeMetricNames(elem.Parameter))
 			switch elem.Parameter {
 			case ibmmq.MQCA_Q_NAME:
 				for i := 0; i < len(elem.String); i++ {
-					//logp.Debug("", "Current queue %v", strings.TrimSpace(elem.String[i]))
-					resp.QueueName = strings.TrimSpace(elem.String[i])
-					resp.Metricset = "queue"
-					resp.Metrictype = "STATQ"
-					key = resp.QueueName
+					logp.Debug("", "Current queue %v", strings.TrimSpace(elem.String[i]))
+					resp.TargetObject = strings.TrimSpace(elem.String[i])
+					resp.Metricset = "Queue"
+					resp.Metrictype = "Status"
+					key = resp.TargetObject
 				}
 			case ibmmq.MQCACH_CHANNEL_NAME:
 				for i := 0; i < len(elem.String); i++ {
 					logp.Debug("", "Current channel %v", strings.TrimSpace(elem.String[i]))
-					resp.ChannelName = strings.TrimSpace(elem.String[i])
-					resp.Metricset = "channel"
-					resp.Metrictype = "channelStatus"
-					key = resp.ChannelName
+					resp.TargetObject = strings.TrimSpace(elem.String[i])
+					resp.Metricset = "Channel"
+					resp.Metrictype = "Status"
+					key = resp.TargetObject
+				}
+			case ibmmq.MQCA_Q_MGR_NAME:
+				for i := 0; i < len(elem.String); i++ {
+					logp.Debug("", "Current queueManager %v", strings.TrimSpace(elem.String[i]))
+					resp.TargetObject = strings.TrimSpace(elem.String[i])
+					resp.Metricset = "QueueManager"
+					resp.Metrictype = "Status"
+					key = resp.TargetObject
 				}
 			default:
 				if normalizeMetricNames(elem.Parameter) != "" {
-					//logp.Debug("", "Current parameter (Type: %v): %v ",elem.Type, normalizeMetricNames(elem.Parameter))
 					paramName := normalizeMetricNames(elem.Parameter)
 					switch elem.Type {
 					case ibmmq.MQCFT_INTEGER:
@@ -143,10 +199,14 @@ func parseResponse() (map[string]*Response, error) {
 							resp.Values[paramName+"_str"] = strValue
 							logp.Debug("", "Translation successfull")
 						}
+					case ibmmq.MQCFT_INTEGER_LIST:
+						for k, v := range elem.Int64Value {
+							resp.Values[paramName+"_"+strconv.Itoa(k)] = v
+						}
 					case ibmmq.MQCFT_STRING:
-						resp.Values[paramName] = elem.String[0]
+						resp.Values[paramName] = strings.TrimSpace(elem.String[0])
 					default:
-						//logp.Debug("", "Unhandeled parameter: %v", normalizeMetricNames(elem.Parameter))
+						logp.Debug("", "Unhandeled parameter: %v type %v", normalizeMetricNames(elem.Parameter), ibmmq.MQItoString("CFT", int(elem.Type)))
 					}
 				}
 			}
@@ -161,7 +221,7 @@ func parseResponse() (map[string]*Response, error) {
 
 }
 
-func putCommand(paramType int32, paramValue string, commandCode int32) error {
+func putCommand(commandCode int32, params map[int32]string) error {
 	var buf []byte
 
 	//Insert command
@@ -177,16 +237,19 @@ func putCommand(paramType int32, paramValue string, commandCode int32) error {
 	cfh := ibmmq.NewMQCFH()
 	cfh.Command = commandCode
 
-	logp.Info("%v for %v initiated", ibmmq.MQItoString("CMD", int(commandCode)), paramValue)
-
+	logp.Info("%v initiated", ibmmq.MQItoString("CMD", int(commandCode)))
 	// Add the parameters once at a time into a buffer
-	pcfparm := new(ibmmq.PCFParameter)
-	pcfparm.Type = ibmmq.MQCFT_STRING
-	pcfparm.Parameter = paramType
-	pcfparm.String = []string{paramValue}
-	cfh.ParameterCount++
-	buf = append(buf, pcfparm.Bytes()...)
-
+	for paramType, paramValue := range params {
+		if paramType != 0 {
+			logp.Info("Param %v set to %v", ibmmq.MQItoString("CA", int(paramType)), paramValue)
+			pcfparm := new(ibmmq.PCFParameter)
+			pcfparm.Type = ibmmq.MQCFT_STRING
+			pcfparm.Parameter = paramType
+			pcfparm.String = []string{paramValue}
+			cfh.ParameterCount++
+			buf = append(buf, pcfparm.Bytes()...)
+		}
+	}
 	buf = append(cfh.Bytes(), buf...)
 
 	// And put the command to the queue
@@ -203,6 +266,9 @@ func putCommand(paramType int32, paramValue string, commandCode int32) error {
 func normalizeMetricNames(parameter int32) string {
 	var returnName string
 	returnName = ibmmq.MQItoString("IA", int(parameter))
+	if returnName == "" {
+		returnName = ibmmq.MQItoString("CA", int(parameter))
+	}
 	returnName = strings.ToLower(returnName)
 
 	return returnName

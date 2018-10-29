@@ -26,8 +26,8 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 import (
 	"fmt"
 
+	"github.com/felix-lessoer/qbeat/beater/ibmmq"
 	"github.com/felix-lessoer/qbeat/config"
-	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
 var (
