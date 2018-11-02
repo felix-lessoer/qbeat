@@ -15,8 +15,8 @@ As this is under development it would be great if you could share Feedback using
 * [Golang](https://golang.org/dl/) 1.7
 * [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with v.9 but should also work with older versions
 
-Make sure that the following folders exists and that your user has sufficient permissions to the files before building the beat.
-If necessary it can be changed in the source files (mqi.go)
+Make sure that the "Path to MQ lib" folders exists in your env and that the beat user has sufficient permissions to the files before building and running the beat.
+If necessary the MQ lib path can be changed in the source files (mqi.go)
 
 #### Linux
 
