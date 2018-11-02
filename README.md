@@ -12,7 +12,7 @@ As this is under development it would be great if you could share Feedback using
 
 ### Requirements
 
-* [Golang](https://golang.org/dl/) 1.7
+* [Golang](https://golang.org/dl/) 1.7 (for Windows 1.10)
 * [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with v.9 but should also work with older versions
 
 Make sure that the following folders exists and that your user has sufficient permissions to the files before building the beat.
