@@ -22,8 +22,13 @@ var (
 )
 
 func connectLegacy(qMgrName string, remoteQMgrName string) error {
+	logp.Info("Connect to Queuemanager")
 	qMgr, err := ibmmq.Conn(qMgrName)
 
+	if err != nil {
+		return err
+	}
+	
 	logp.Info("Connect to command queue")
 	//Connect to Command Queue
 	mqod := ibmmq.NewMQOD()
