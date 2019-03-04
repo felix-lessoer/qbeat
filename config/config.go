@@ -8,21 +8,24 @@ import (
 )
 
 type ConnectionConfig struct {
-	ClientMode bool
-	UserId     string
-	Password   string
+	ClientMode bool   `config:"clientMode"`
+	MqServer   string `config:"mqServer"`
+	UserId     string `config:"userId"`
+	Password   string `config:"password"`
 }
 
 type Config struct {
-	Period             time.Duration `config:"period"`
-	QueueManager       string        `config:"queueManager"`
-	RemoteQueueManager string        `config:"remoteQueueManager"`
-	LocalQueue         string        `config:"localQueue"`
-	Channel            string        `config:"channel"`
-	QMgrStat           bool          `config:"queueManagerStatus"`
-	PubSub             bool          `config:"pubSub"`
-	Advanced           string        `config:"advanced"`
-	CC                 ConnectionConfig
+	Period             time.Duration    `config:"period"`
+	QueueManager       string           `config:"queueManager"`
+	RemoteQueueManager string           `config:"remoteQueueManager"`
+	LocalQueue         string           `config:"queue"`
+	QueueStatus        bool             `config:"queueStatus"`
+	QueueStats         bool             `config:"queueStats"`
+	Channel            string           `config:"channel"`
+	QMgrStat           bool             `config:"queueManagerStatus"`
+	PubSub             bool             `config:"pubSub"`
+	Advanced           string           `config:"advanced"`
+	CC                 ConnectionConfig `config:"cc"`
 }
 
 var (
@@ -31,7 +34,14 @@ var (
 		QMgrStat:           true,
 		RemoteQueueManager: "",
 		LocalQueue:         "*",
+		QueueStatus:        true,
+		QueueStats:         true,
 		Channel:            "*",
 		Advanced:           "",
+		CC: ConnectionConfig{
+			ClientMode: false,
+			UserId:     "",
+			Password:   "",
+		},
 	}
 )

@@ -5,3 +5,6 @@
 /qbeat
 /qbeat.test
 *.pyc
+
+/qbeat-QM2.yml
+/qbeat.exe

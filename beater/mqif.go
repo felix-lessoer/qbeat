@@ -25,6 +25,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/felix-lessoer/qbeat/beater/ibmmq"
 	"github.com/felix-lessoer/qbeat/config"
@@ -62,6 +63,7 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 	gocsp := ibmmq.NewMQCSP()
 
 	if cc.ClientMode {
+		os.Setenv("MQSERVER", cc.MqServer)
 		gocno.Options = ibmmq.MQCNO_CLIENT_BINDING
 	} else {
 		gocno.Options = ibmmq.MQCNO_LOCAL_BINDING

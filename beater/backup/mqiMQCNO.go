@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2018
+  Copyright (c) IBM Corporation 2016
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -12,8 +12,7 @@ package ibmmq
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
+  See the License for the specific
 
    Contributors:
      Mark Taylor - Initial Contribution
@@ -25,32 +24,6 @@ package ibmmq
 #include <string.h>
 #include <cmqc.h>
 #include <cmqxc.h>
-
-void freeCCDTUrl(MQCNO *mqcno) {
-#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
-	if (mqcno->CCDTUrlPtr != NULL) {
-		free(mqcno->CCDTUrlPtr);
-	}
-#endif
-}
-
-void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
-#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
-  if (mqcno->Version < MQCNO_VERSION_6) {
-	  mqcno->Version = MQCNO_VERSION_6;
-	}
-	mqcno->CCDTUrlOffset = 0;
-	mqcno->CCDTUrlPtr = NULL;
-	mqcno->CCDTUrlLength = length;
-	if (url != NULL && length > 0) {
-		mqcno->CCDTUrlPtr = url;
-	}
-#else
-	if (url != NULL) {
-		free(url);
-	}
-#endif
-}
 
 */
 import "C"
@@ -178,11 +151,13 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcno.SecurityParmsPtr = nil
 	}
 
-	// The CCDT URL option was introduced in MQ V9. To compile against older
-	// versions of MQ, setting of it has been moved to a C function that can use
-	// the pre-processor to decide whether it's needed.
-	if gocno.CCDTUrl != "" {
-		C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
+	mqcno.CCDTUrlOffset = 0
+	if len(gocno.CCDTUrl) != 0 {
+		mqcno.CCDTUrlPtr = C.PMQCHAR(unsafe.Pointer(C.CString(gocno.CCDTUrl)))
+		mqcno.CCDTUrlLength = C.MQLONG(len(gocno.CCDTUrl))
+	} else {
+		mqcno.CCDTUrlPtr = nil
+		mqcno.CCDTUrlLength = 0
 	}
 	return
 }
@@ -211,6 +186,8 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		C.free(unsafe.Pointer(mqcno.SSLConfigPtr))
 	}
 
-	C.freeCCDTUrl(mqcno)
+	if mqcno.CCDTUrlPtr != nil {
+		C.free(unsafe.Pointer(mqcno.CCDTUrlPtr))
+	}
 	return
 }

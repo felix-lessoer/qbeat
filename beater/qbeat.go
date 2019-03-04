@@ -49,14 +49,11 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 func connectPubSub(bt *Qbeat) error {
 	var err error
 
-	bt.config.CC.ClientMode = false
-
 	// Connect to MQ
-
 	logp.Info("Connect to QM %v start", bt.config.QueueManager)
 	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
 	if err == nil {
-		logp.Info("Connected to queue manager %v", bt.config.QueueManager)
+		logp.Info("Connected to queue manager %v with client mode %v", bt.config.QueueManager, bt.config.CC.ClientMode)
 	}
 
 	logp.Info("Connect to QM done")
@@ -135,9 +132,10 @@ func collectPubSub(bt *Qbeat, b *beat.Beat) {
 }
 
 func connectLegacyMode(bt *Qbeat) error {
-	logp.Info("Connect in legacy mode")
+	logp.Info("Connect in legacy mode with client mode %v", bt.config.CC.ClientMode)
 
-	err = connectLegacy(bt.config.QueueManager, bt.config.RemoteQueueManager)
+	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
+	//err = connectLegacy(bt.config.QueueManager, bt.config.RemoteQueueManager)
 
 	if err != nil {
 		return err
@@ -265,19 +263,27 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 		if err != nil {
 			return err
 		}
-
-		qStatus, err := getQueueStatus(bt.config.LocalQueue)
-		if err != nil {
-			return err
-		}
-
-		qStatistics, err := getQueueStatistics(bt.config.LocalQueue)
-		if err != nil {
-			return err
-		}
 		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, qMetadata)
-		tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatus)
-		events = append(events, mergeEventsWithResponseObj(tmpEvents, qStatistics)...)
+
+		if bt.config.QueueStatus {
+			qStatus, err := getQueueStatus(bt.config.LocalQueue)
+			if err != nil {
+				return err
+			}
+
+			tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatus)
+		}
+
+		if bt.config.QueueStats {
+			qStatistics, err := getQueueStatistics(bt.config.LocalQueue)
+			if err != nil {
+				return err
+			}
+
+			tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatistics)
+		}
+
+		events = append(events, tmpEvents...)
 	}
 
 	//Add a field that contains all connections to other MQ objects
