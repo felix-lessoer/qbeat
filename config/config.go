@@ -16,8 +16,8 @@ type ConnectionConfig struct {
 
 type Config struct {
 	Period             time.Duration    `config:"period"`
-	QueueManager       string           `config:"queueManager"`
-	RemoteQueueManager string           `config:"remoteQueueManager"`
+	QueueManager       string           `config:"bindingQueueManager"`
+	RemoteQueueManager string           `config:"targetQueueManager"`
 	LocalQueue         string           `config:"queue"`
 	QueueStatus        bool             `config:"queueStatus"`
 	QueueStats         bool             `config:"queueStats"`

@@ -11,8 +11,13 @@ qbeat:
   period: 10s
   #period: 10s
 
-  #Defines the queuemanger you want to monitor.
-  queueManager: "QM1"
+  #Defines the queue manager you want to connect to
+  bindingQueueManager: "QM1"
+
+  #Defines the queue manger you want to monitor. If empty the binding queue manager will be used
+  targetQueueManager: "QM2"
+
+  #Defines whether you like to collect status information of the target queue manager
   queueManagerStatus: true
 
   #Defines the local queues to gets stats from. Defauls to * which indicates that everything

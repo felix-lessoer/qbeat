@@ -51,7 +51,7 @@ func connectPubSub(bt *Qbeat) error {
 
 	// Connect to MQ
 	logp.Info("Connect to QM %v start", bt.config.QueueManager)
-	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
+	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", bt.config.RemoteQueueManager, &bt.config.CC)
 	if err == nil {
 		logp.Info("Connected to queue manager %v with client mode %v", bt.config.QueueManager, bt.config.CC.ClientMode)
 	}
@@ -134,7 +134,7 @@ func collectPubSub(bt *Qbeat, b *beat.Beat) {
 func connectLegacyMode(bt *Qbeat) error {
 	logp.Info("Connect in legacy mode with client mode %v", bt.config.CC.ClientMode)
 
-	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
+	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", bt.config.RemoteQueueManager, &bt.config.CC)
 	//err = connectLegacy(bt.config.QueueManager, bt.config.RemoteQueueManager)
 
 	if err != nil {
@@ -210,7 +210,15 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 	//Collect queue statistics
 	var err error
 	var events []beat.Event
+	var targetQMgrName string
 
+	if bt.config.RemoteQueueManager != "" {
+		targetQMgrName = bt.config.RemoteQueueManager
+	} else {
+		targetQMgrName = bt.config.QueueManager
+	}
+
+	logp.Info("Collecting from q manager: %v", targetQMgrName)
 	if bt.config.Advanced != "" {
 		logp.Info("Start collecting in advance object")
 		var requestObject RequestObject
@@ -227,7 +235,7 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 				return err
 			}
 
-			events = append(events, createEvents(b.Info.Name, bt.config.QueueManager, responseObj)...)
+			events = append(events, createEvents(b.Info.Name, targetQMgrName, responseObj)...)
 		}
 	}
 	if bt.config.QMgrStat {
@@ -240,7 +248,7 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 		if err != nil {
 			return err
 		}
-		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, qMgrMetadata)
+		tmpEvents := createEvents(b.Info.Name, targetQMgrName, qMgrMetadata)
 		events = append(events, mergeEventsWithResponseObj(tmpEvents, qMgrStatus)...)
 	}
 
@@ -254,7 +262,7 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 			return err
 		}
 
-		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, chMetadata)
+		tmpEvents := createEvents(b.Info.Name, targetQMgrName, chMetadata)
 		events = append(events, mergeEventsWithResponseObj(tmpEvents, chStatus)...)
 	}
 
@@ -263,7 +271,7 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 		if err != nil {
 			return err
 		}
-		tmpEvents := createEvents(b.Info.Name, bt.config.QueueManager, qMetadata)
+		tmpEvents := createEvents(b.Info.Name, targetQMgrName, qMetadata)
 
 		if bt.config.QueueStatus {
 			qStatus, err := getQueueStatus(bt.config.LocalQueue)
@@ -316,10 +324,12 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		legacy = true
 	}
 
+	logp.Info("Trying to connect to %v", bt.config.QueueManager)
+
 	if legacy {
 		err = connectLegacyMode(bt)
 		if err != nil {
-			logp.Info("Wasn't able to connect due to an error")
+			logp.Critical("Wasn't able to connect due to an error")
 			return err
 		}
 	}
@@ -328,7 +338,7 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		err = connectPubSub(bt)
 
 		if err != nil {
-			logp.Info("Wasn't able to connect due to an error")
+			logp.Critical("Wasn't able to connect due to an error")
 			return err
 		}
 	}
