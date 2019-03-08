@@ -14,8 +14,8 @@ qbeat:
   #Defines the queue manager you want to connect to
   bindingQueueManager: "QM1"
 
-  #Defines the queue manger you want to monitor. If empty the binding queue manager will be used
-  targetQueueManager: "QM2"
+  #Defines the queue managers you want to monitor. If empty the binding queue manager will be used
+  targetQueueManager: ["QM2", "QM4"]
 
   #Defines whether you like to collect status information of the target queue manager
   queueManagerStatus: true
@@ -106,8 +106,8 @@ setup.kibana:
 # The cloud.id setting overwrites the `output.elasticsearch.hosts` and
 # `setup.kibana.host` options.
 # You can find the `cloud.id` in the Elastic Cloud web UI.
-# cloud.id: ""
-# cloud.auth: ""
+cloud.id: ""
+cloud.auth: ""
 
 
 #================================ Outputs =====================================

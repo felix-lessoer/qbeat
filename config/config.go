@@ -17,7 +17,7 @@ type ConnectionConfig struct {
 type Config struct {
 	Period             time.Duration    `config:"period"`
 	QueueManager       string           `config:"bindingQueueManager"`
-	RemoteQueueManager string           `config:"targetQueueManager"`
+	RemoteQueueManager []string         `config:"targetQueueManager"`
 	LocalQueue         string           `config:"queue"`
 	QueueStatus        bool             `config:"queueStatus"`
 	QueueStats         bool             `config:"queueStats"`
@@ -32,7 +32,7 @@ var (
 	DefaultConfig = Config{
 		PubSub:             false,
 		QMgrStat:           true,
-		RemoteQueueManager: "",
+		RemoteQueueManager: []string{""},
 		LocalQueue:         "*",
 		QueueStatus:        true,
 		QueueStats:         true,

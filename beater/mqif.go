@@ -32,11 +32,13 @@ import (
 )
 
 var (
-	qMgrPubSub ibmmq.MQQueueManager
-	cmdQObj    ibmmq.MQObject
-	replyQObj  ibmmq.MQObject
-	statsQObj  ibmmq.MQObject
-	getBuffer  = make([]byte, 32768)
+	qMgrPubSub      ibmmq.MQQueueManager
+	cmdQObj         ibmmq.MQObject
+	replyQObj       ibmmq.MQObject
+	statsQObj       ibmmq.MQObject
+	getBuffer       = make([]byte, 32768)
+	bindingQMgrName string
+	remoteQMgrName  string
 
 	qmgrConnected     = false
 	queuesOpened      = false
@@ -49,15 +51,15 @@ InitConnection connects to the queue manager, and then
 opens both the command queue and a dynamic reply queue
 to be used for all responses including the publications
 */
-func InitConnection(qMgrName string, replyQ string, remoteQMgrName string, cc *config.ConnectionConfig) error {
-	return InitConnectionStats(qMgrName, replyQ, remoteQMgrName, "", cc)
+func InitConnection(qMgrName string, replyQ string, cc *config.ConnectionConfig) error {
+	return InitConnectionStats(qMgrName, replyQ, "", cc)
 }
 
 /*
 InitConnectionStats is the same as InitConnection with the addition
 of a call to open the queue manager statistics queue.
 */
-func InitConnectionStats(qMgrName string, replyQ string, remoteQMgrName string, statsQ string, cc *config.ConnectionConfig) error {
+func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *config.ConnectionConfig) error {
 	var err error
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
@@ -83,20 +85,9 @@ func InitConnectionStats(qMgrName string, replyQ string, remoteQMgrName string, 
 		qmgrConnected = true
 	}
 
-	// MQOPEN of the COMMAND QUEUE
+	//Initally open command queue with current q manager
 	if err == nil {
-		mqod := ibmmq.NewMQOD()
-
-		openOptions := ibmmq.MQOO_OUTPUT | ibmmq.MQOO_FAIL_IF_QUIESCING
-
-		mqod.ObjectType = ibmmq.MQOT_Q
-		if remoteQMgrName != "" {
-			mqod.ObjectQMgrName = remoteQMgrName
-		}
-		mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
-
-		cmdQObj, err = qMgrPubSub.Open(mqod, openOptions)
-
+		err = OpenCommandQueue(qMgrName)
 	}
 
 	// MQOPEN of the statistics queue
@@ -104,9 +95,6 @@ func InitConnectionStats(qMgrName string, replyQ string, remoteQMgrName string, 
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
-		if remoteQMgrName != "" {
-			mqod.ObjectQMgrName = remoteQMgrName
-		}
 		mqod.ObjectName = statsQ
 		statsQObj, err = qMgrPubSub.Open(mqod, openOptions)
 		if err == nil {
@@ -129,7 +117,26 @@ func InitConnectionStats(qMgrName string, replyQ string, remoteQMgrName string, 
 	if err != nil {
 		return fmt.Errorf("Cannot access queue manager. Error: %v", err)
 	}
+	bindingQMgrName = qMgrName
+	remoteQMgrName = remoteQMgrName
+	return err
+}
 
+//To change the target q manager call this function first to command queue to the new target
+func OpenCommandQueue(remoteQMgrName string) error {
+	// MQOPEN of the COMMAND QUEUE
+
+	mqod := ibmmq.NewMQOD()
+
+	openOptions := ibmmq.MQOO_OUTPUT | ibmmq.MQOO_FAIL_IF_QUIESCING
+
+	mqod.ObjectType = ibmmq.MQOT_Q
+	if remoteQMgrName != "" {
+		mqod.ObjectQMgrName = remoteQMgrName
+	}
+	mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
+
+	cmdQObj, err = qMgrPubSub.Open(mqod, openOptions)
 	return err
 }
 

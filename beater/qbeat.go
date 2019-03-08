@@ -51,7 +51,7 @@ func connectPubSub(bt *Qbeat) error {
 
 	// Connect to MQ
 	logp.Info("Connect to QM %v start", bt.config.QueueManager)
-	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", bt.config.RemoteQueueManager, &bt.config.CC)
+	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
 	if err == nil {
 		logp.Info("Connected to queue manager %v with client mode %v", bt.config.QueueManager, bt.config.CC.ClientMode)
 	}
@@ -134,7 +134,7 @@ func collectPubSub(bt *Qbeat, b *beat.Beat) {
 func connectLegacyMode(bt *Qbeat) error {
 	logp.Info("Connect in legacy mode with client mode %v", bt.config.CC.ClientMode)
 
-	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", bt.config.RemoteQueueManager, &bt.config.CC)
+	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
 	//err = connectLegacy(bt.config.QueueManager, bt.config.RemoteQueueManager)
 
 	if err != nil {
@@ -210,88 +210,90 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 	//Collect queue statistics
 	var err error
 	var events []beat.Event
-	var targetQMgrName string
+	var targetQMgrNames []string
 
-	if bt.config.RemoteQueueManager != "" {
-		targetQMgrName = bt.config.RemoteQueueManager
+	if bt.config.RemoteQueueManager[0] != "" {
+		targetQMgrNames = bt.config.RemoteQueueManager
 	} else {
-		targetQMgrName = bt.config.QueueManager
+		targetQMgrNames = []string{bt.config.QueueManager}
 	}
 
-	logp.Info("Collecting from q manager: %v", targetQMgrName)
-	if bt.config.Advanced != "" {
-		logp.Info("Start collecting in advance object")
-		var requestObject RequestObject
-		err := json.Unmarshal([]byte(bt.config.Advanced), &requestObject)
-
-		if err != nil {
-			return err
-		}
-		logp.Info("Advanced json: %v", requestObject)
-		for _, command := range requestObject.Commands {
-			responseObj, err := getAdvancedResponse(command.Cmd, command.Params)
+	for _, targetQMgrName := range targetQMgrNames {
+		logp.Info("Collecting from q manager: %v", targetQMgrName)
+		if bt.config.Advanced != "" {
+			logp.Info("Start collecting in advance object")
+			var requestObject RequestObject
+			err := json.Unmarshal([]byte(bt.config.Advanced), &requestObject)
 
 			if err != nil {
 				return err
 			}
+			logp.Info("Advanced json: %v", requestObject)
+			for _, command := range requestObject.Commands {
+				responseObj, err := getAdvancedResponse(targetQMgrName, command.Cmd, command.Params)
 
-			events = append(events, createEvents(b.Info.Name, targetQMgrName, responseObj)...)
-		}
-	}
-	if bt.config.QMgrStat {
-		qMgrMetadata, err := getQManagerMetadata()
-		if err != nil {
-			return err
-		}
+				if err != nil {
+					return err
+				}
 
-		qMgrStatus, err := getQManagerStatus()
-		if err != nil {
-			return err
+				events = append(events, createEvents(b.Info.Name, targetQMgrName, responseObj)...)
+			}
 		}
-		tmpEvents := createEvents(b.Info.Name, targetQMgrName, qMgrMetadata)
-		events = append(events, mergeEventsWithResponseObj(tmpEvents, qMgrStatus)...)
-	}
-
-	if bt.config.Channel != "" {
-		chMetadata, err := getChannelMetadata(bt.config.Channel)
-		if err != nil {
-			return err
-		}
-		chStatus, err := getChannelStatus(bt.config.Channel)
-		if err != nil {
-			return err
-		}
-
-		tmpEvents := createEvents(b.Info.Name, targetQMgrName, chMetadata)
-		events = append(events, mergeEventsWithResponseObj(tmpEvents, chStatus)...)
-	}
-
-	if bt.config.LocalQueue != "" {
-		qMetadata, err := getQueueMetadata(bt.config.LocalQueue)
-		if err != nil {
-			return err
-		}
-		tmpEvents := createEvents(b.Info.Name, targetQMgrName, qMetadata)
-
-		if bt.config.QueueStatus {
-			qStatus, err := getQueueStatus(bt.config.LocalQueue)
+		if bt.config.QMgrStat {
+			qMgrMetadata, err := getQManagerMetadata(targetQMgrName)
 			if err != nil {
 				return err
 			}
 
-			tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatus)
+			qMgrStatus, err := getQManagerStatus(targetQMgrName)
+			if err != nil {
+				return err
+			}
+			tmpEvents := createEvents(b.Info.Name, targetQMgrName, qMgrMetadata)
+			events = append(events, mergeEventsWithResponseObj(tmpEvents, qMgrStatus)...)
 		}
 
-		if bt.config.QueueStats {
-			qStatistics, err := getQueueStatistics(bt.config.LocalQueue)
+		if bt.config.Channel != "" {
+			chMetadata, err := getChannelMetadata(targetQMgrName, bt.config.Channel)
+			if err != nil {
+				return err
+			}
+			chStatus, err := getChannelStatus(targetQMgrName, bt.config.Channel)
 			if err != nil {
 				return err
 			}
 
-			tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatistics)
+			tmpEvents := createEvents(b.Info.Name, targetQMgrName, chMetadata)
+			events = append(events, mergeEventsWithResponseObj(tmpEvents, chStatus)...)
 		}
 
-		events = append(events, tmpEvents...)
+		if bt.config.LocalQueue != "" {
+			qMetadata, err := getQueueMetadata(targetQMgrName, bt.config.LocalQueue)
+			if err != nil {
+				return err
+			}
+			tmpEvents := createEvents(b.Info.Name, targetQMgrName, qMetadata)
+
+			if bt.config.QueueStatus {
+				qStatus, err := getQueueStatus(targetQMgrName, bt.config.LocalQueue)
+				if err != nil {
+					return err
+				}
+
+				tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatus)
+			}
+
+			if bt.config.QueueStats {
+				qStatistics, err := getQueueStatistics(targetQMgrName, bt.config.LocalQueue)
+				if err != nil {
+					return err
+				}
+
+				tmpEvents = mergeEventsWithResponseObj(tmpEvents, qStatistics)
+			}
+
+			events = append(events, tmpEvents...)
+		}
 	}
 
 	//Add a field that contains all connections to other MQ objects

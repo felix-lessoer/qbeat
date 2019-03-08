@@ -21,93 +21,60 @@ var (
 	err error
 )
 
-func connectLegacy(qMgrName string, remoteQMgrName string) error {
-	logp.Info("Connect to Queuemanager")
-	qMgr, err := ibmmq.Conn(qMgrName)
-
-	if err != nil {
-		return err
-	}
-	
-	logp.Info("Connect to command queue")
-	//Connect to Command Queue
-	mqod := ibmmq.NewMQOD()
-	openOptions := ibmmq.MQOO_OUTPUT | ibmmq.MQOO_FAIL_IF_QUIESCING
-	mqod.ObjectType = ibmmq.MQOT_Q
-	mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
-
-	cmdQObj, err = qMgr.Open(mqod, openOptions)
-
-	if err != nil {
-		return err
-	}
-
-	logp.Info("Connect to Reply queue")
-	//Connect to Reply Queue
-	mqod2 := ibmmq.NewMQOD()
-	openOptions2 := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
-	mqod2.ObjectType = ibmmq.MQOT_Q
-	mqod2.ObjectName = "SYSTEM.DEFAULT.MODEL.QUEUE"
-	replyQObj, err = qMgr.Open(mqod2, openOptions2)
-
-	return err
-}
-
-func getQueueStatistics(localQueueName string) (map[string]*Response, error) {
+func getQueueStatistics(targetQMgrName string, localQueueName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
-	err = putCommand(ibmmq.MQCMD_RESET_Q_STATS, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_RESET_Q_STATS, params)
 	return parseResponse()
 }
 
-func getQueueStatus(localQueueName string) (map[string]*Response, error) {
+func getQueueStatus(targetQMgrName string, localQueueName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
-	err = putCommand(ibmmq.MQCMD_INQUIRE_Q_STATUS, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q_STATUS, params)
 	return parseResponse()
 }
 
-func getQueueMetadata(localQueueName string) (map[string]*Response, error) {
+func getQueueMetadata(targetQMgrName string, localQueueName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
-	err = putCommand(ibmmq.MQCMD_INQUIRE_Q, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q, params)
 	return parseResponse()
 }
 
-func getChannelMetadata(channelName string) (map[string]*Response, error) {
+func getChannelMetadata(targetQMgrName string, channelName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
 
-	err = putCommand(ibmmq.MQCMD_INQUIRE_CHANNEL, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_CHANNEL, params)
 	return parseResponse()
 }
 
-func getChannelStatus(channelName string) (map[string]*Response, error) {
+func getChannelStatus(targetQMgrName string, channelName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
 
-	err = putCommand(ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS, params)
 	return parseResponse()
 }
 
-func getQManagerMetadata() (map[string]*Response, error) {
+func getQManagerMetadata(targetQMgrName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 
-	err = putCommand(ibmmq.MQCMD_INQUIRE_Q_MGR, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q_MGR, params)
 	return parseResponse()
 }
 
-func getQManagerStatus() (map[string]*Response, error) {
+func getQManagerStatus(targetQMgrName string) (map[string]*Response, error) {
 	var params = make(map[int32]string)
-
-	err = putCommand(ibmmq.MQCMD_INQUIRE_Q_MGR_STATUS, params)
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q_MGR_STATUS, params)
 	return parseResponse()
 }
 
-func getAdvancedResponse(cmdString string, paramsInput map[string]interface{}) (map[string]*Response, error) {
+func getAdvancedResponse(targetQMgrName string, cmdString string, paramsInput map[string]interface{}) (map[string]*Response, error) {
 	var params = make(map[int32]string)
 	var cmd int32
 
@@ -116,7 +83,7 @@ func getAdvancedResponse(cmdString string, paramsInput map[string]interface{}) (
 		params[GetMQConstant(paramNameString)] = paramValue.(string)
 	}
 
-	err = putCommand(cmd, params)
+	err = putCommand(targetQMgrName, cmd, params)
 	return parseResponse()
 }
 
@@ -226,7 +193,7 @@ func parseResponse() (map[string]*Response, error) {
 
 }
 
-func putCommand(commandCode int32, params map[int32]string) error {
+func putCommand(targetQMgrName string, commandCode int32, params map[int32]string) error {
 	var buf []byte
 
 	//Insert command
@@ -241,6 +208,10 @@ func putCommand(commandCode int32, params map[int32]string) error {
 	// Reset QStats
 	cfh := ibmmq.NewMQCFH()
 	cfh.Command = commandCode
+
+	//If target queue manager is on z_os we need to add Commandscope
+	OpenCommandQueue(targetQMgrName)
+	params[ibmmq.MQCACF_COMMAND_SCOPE] = targetQMgrName
 
 	logp.Info("%v initiated", ibmmq.MQItoString("CMD", int(commandCode)))
 	// Add the parameters once at a time into a buffer
