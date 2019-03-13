@@ -27,22 +27,27 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/elastic/beats/libbeat/logp"
 	"github.com/felix-lessoer/qbeat/beater/ibmmq"
 	"github.com/felix-lessoer/qbeat/config"
 )
 
 var (
-	qMgrPubSub      ibmmq.MQQueueManager
-	cmdQObj         ibmmq.MQObject
-	replyQObj       ibmmq.MQObject
-	statsQObj       ibmmq.MQObject
-	getBuffer       = make([]byte, 32768)
-	bindingQMgrName string
-	remoteQMgrName  string
+	qMgr             ibmmq.MQQueueManager
+	cmdQObj          ibmmq.MQObject
+	replyQObj        ibmmq.MQObject
+	statsQObj        ibmmq.MQObject
+	getBuffer        = make([]byte, 32768)
+	platform         int32
+	commandLevel     int32
+	resolvedQMgrName string
+	bindingQMgrName  string
+	remoteQMgrName   string
 
 	qmgrConnected     = false
 	queuesOpened      = false
 	statsQueuesOpened = false
+	commandQueueOpen  = false
 	subsOpened        = false
 )
 
@@ -80,14 +85,9 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		gocno.SecurityParms = gocsp
 	}
 
-	qMgrPubSub, err = ibmmq.Connx(qMgrName, gocno)
+	qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
-	}
-
-	//Initally open command queue with current q manager
-	if err == nil {
-		err = OpenCommandQueue(qMgrName)
 	}
 
 	// MQOPEN of the statistics queue
@@ -96,7 +96,7 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = statsQ
-		statsQObj, err = qMgrPubSub.Open(mqod, openOptions)
+		statsQObj, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			statsQueuesOpened = true
 		}
@@ -108,35 +108,68 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *conf
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
-		replyQObj, err = qMgrPubSub.Open(mqod, openOptions)
+		replyQObj, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			queuesOpened = true
 		}
+	}
+
+	//Initally open command queue with current q manager
+	if err == nil {
+		err = OpenCommandQueue(qMgrName)
 	}
 
 	if err != nil {
 		return fmt.Errorf("Cannot access queue manager. Error: %v", err)
 	}
 	bindingQMgrName = qMgrName
-	remoteQMgrName = remoteQMgrName
 	return err
 }
 
 //To change the target q manager call this function first to command queue to the new target
-func OpenCommandQueue(remoteQMgrName string) error {
+func OpenCommandQueue(remoteQMgr string) error {
 	// MQOPEN of the COMMAND QUEUE
-
+	if commandQueueOpen {
+		cmdQObj.Close(0)
+	}
+	logp.Info("Connect to command queue of q mgr name: %v", remoteQMgr)
 	mqod := ibmmq.NewMQOD()
 
 	openOptions := ibmmq.MQOO_OUTPUT | ibmmq.MQOO_FAIL_IF_QUIESCING
 
 	mqod.ObjectType = ibmmq.MQOT_Q
-	if remoteQMgrName != "" {
-		mqod.ObjectQMgrName = remoteQMgrName
+	if remoteQMgr != "" {
+		mqod.ObjectQMgrName = remoteQMgr
 	}
 	mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
 
-	cmdQObj, err = qMgrPubSub.Open(mqod, openOptions)
+	cmdQObj, err = qMgr.Open(mqod, openOptions)
+	if err == nil {
+		commandQueueOpen = true
+		remoteQMgrName = remoteQMgr
+		err = DiscoverQmgrMetadata(remoteQMgrName)
+		return nil
+	}
+
+	return err
+}
+
+/**
+Discover important information about the qmgr - its real name
+and the platform type. Also check if it is at least V9 (on Distributed platforms)
+so that pub sub monitoring will work.
+*/
+func DiscoverQmgrMetadata(remoteQMgr string) error {
+
+	data, err := getQManagerMetadata(remoteQMgr)
+
+	if err == nil {
+		platform = int32(data[remoteQMgr].Values["mqia_platform"].(int64))
+		commandLevel = int32(data[remoteQMgr].Values["mqia_command_level"].(int64))
+		logp.Info("Successfully collected q mgr metadata. Name: %v, Platform: %v", data[remoteQMgr].TargetObject, ibmmq.MQItoString("PL", int(platform)))
+		return nil
+	}
+
 	return err
 }
 
@@ -168,7 +201,7 @@ func EndConnection() {
 
 	// MQDISC regardless of other errors
 	if qmgrConnected {
-		qMgrPubSub.Disc()
+		qMgr.Disc()
 	}
 
 }
@@ -224,7 +257,7 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 
 	mqsd.ObjectString = topic
 
-	subObj, err := qMgrPubSub.Sub(mqsd, &replyQObj)
+	subObj, err := qMgr.Sub(mqsd, &replyQObj)
 	if err != nil {
 		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v", topic, err)
 	}

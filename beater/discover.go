@@ -120,9 +120,9 @@ func discoverClasses(metaPrefix string) error {
 
 	// Have to know the starting point for the topic that tells about classes
 	if metaPrefix == "" {
-		rootTopic = "$SYS/MQ/INFO/QMGR/" + qMgrPubSub.Name + "/Monitor/METADATA/CLASSES"
+		rootTopic = "$SYS/MQ/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
 	} else {
-		rootTopic = metaPrefix + "/INFO/QMGR/" + qMgrPubSub.Name + "/Monitor/METADATA/CLASSES"
+		rootTopic = metaPrefix + "/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
 	}
 	sub, err = subscribe(rootTopic)
 	if err == nil {

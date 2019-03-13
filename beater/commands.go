@@ -209,9 +209,14 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]strin
 	cfh := ibmmq.NewMQCFH()
 	cfh.Command = commandCode
 
+	if targetQMgrName != remoteQMgrName {
+		OpenCommandQueue(targetQMgrName)
+	}
+
 	//If target queue manager is on z_os we need to add Commandscope
-	OpenCommandQueue(targetQMgrName)
-	params[ibmmq.MQCACF_COMMAND_SCOPE] = targetQMgrName
+	if platform == ibmmq.MQPL_ZOS {
+		params[ibmmq.MQCACF_COMMAND_SCOPE] = targetQMgrName
+	}
 
 	logp.Info("%v initiated", ibmmq.MQItoString("CMD", int(commandCode)))
 	// Add the parameters once at a time into a buffer
