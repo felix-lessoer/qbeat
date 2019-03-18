@@ -212,6 +212,9 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]strin
 
 	// Reset QStats
 	cfh := ibmmq.NewMQCFH()
+	cfh.Version = ibmmq.MQCFH_VERSION_3
+	cfh.Type = ibmmq.MQCFT_COMMAND_XR
+
 	cfh.Command = commandCode
 
 	if targetQMgrName != remoteQMgrName {
