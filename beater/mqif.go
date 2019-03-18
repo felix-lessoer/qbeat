@@ -164,10 +164,13 @@ func DiscoverQmgrMetadata(remoteQMgr string) error {
 	data, err := getQManagerMetadata(remoteQMgr)
 
 	if err == nil {
-		platform = int32(data[remoteQMgr].Values["mqia_platform"].(int64))
-		commandLevel = int32(data[remoteQMgr].Values["mqia_command_level"].(int64))
-		logp.Info("Successfully collected q mgr metadata. Name: %v, Platform: %v", data[remoteQMgr].TargetObject, ibmmq.MQItoString("PL", int(platform)))
-		return nil
+		for _, obj := range data {
+			logp.Debug("Raw object: %v", obj)
+			platform = int32(obj.Values["mqia_platform"].(int64))
+			commandLevel = int32(obj.Values["mqia_command_level"].(int64))
+			logp.Info("Successfully collected q mgr metadata. Name: %v, Platform: %v", obj.TargetObject, ibmmq.MQItoString("PL", int(platform)))
+			return nil
+		}
 	}
 
 	return err
