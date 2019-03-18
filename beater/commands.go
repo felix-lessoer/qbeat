@@ -151,7 +151,7 @@ func parseResponse() (map[string]*Response, error) {
 					resp.Metrictype = "Status"
 					key = resp.TargetObject
 				}
-			case ibmmq.MQCA_Q_MGR_NAME:
+			case ibmmq.MQCA_Q_MGR_NAME, ibmmq.MQCACF_RESPONSE_Q_MGR_NAME:
 				for i := 0; i < len(elem.String); i++ {
 					logp.Debug("", "Current queueManager %v", strings.TrimSpace(elem.String[i]))
 					resp.TargetObject = strings.TrimSpace(elem.String[i])
