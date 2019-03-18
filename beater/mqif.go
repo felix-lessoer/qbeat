@@ -165,7 +165,7 @@ func DiscoverQmgrMetadata(remoteQMgr string) error {
 
 	if err == nil {
 		for _, obj := range data {
-			logp.Debug("Raw object: %v", obj)
+			logp.Debug("Discover", "Raw object: %v", obj)
 			platform = int32(obj.Values["mqia_platform"].(int64))
 			commandLevel = int32(obj.Values["mqia_command_level"].(int64))
 			logp.Info("Successfully collected q mgr metadata. Name: %v, Platform: %v", obj.TargetObject, ibmmq.MQItoString("PL", int(platform)))
