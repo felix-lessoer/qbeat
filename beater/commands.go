@@ -178,7 +178,7 @@ func parseResponse() (map[string]*Response, error) {
 					case ibmmq.MQCFT_STRING:
 						resp.Values[paramName] = strings.TrimSpace(elem.String[0])
 					default:
-						logp.Debug("", "Unhandeled parameter: %v type %v", normalizeMetricNames(elem.Parameter), ibmmq.MQItoString("CFT", int(elem.Type)))
+						//logp.Debug("", "Unhandeled parameter: %v type %v", normalizeMetricNames(elem.Parameter), ibmmq.MQItoString("CFT", int(elem.Type)))
 					}
 				}
 			}
@@ -199,6 +199,11 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]strin
 	//Insert command
 	putmqmd := ibmmq.NewMQMD()
 	pmo := ibmmq.NewMQPMO()
+
+	pmo.Options = ibmmq.MQPMO_NO_SYNCPOINT
+	pmo.Options |= ibmmq.MQPMO_NEW_MSG_ID
+	pmo.Options |= ibmmq.MQPMO_NEW_CORREL_ID
+	pmo.Options |= ibmmq.MQPMO_FAIL_IF_QUIESCING
 
 	putmqmd.Format = "MQADMIN"
 	putmqmd.ReplyToQ = replyQObj.Name
