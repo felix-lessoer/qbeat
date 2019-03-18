@@ -147,7 +147,7 @@ func OpenCommandQueue(remoteQMgr string) error {
 	if err == nil {
 		commandQueueOpen = true
 		remoteQMgrName = remoteQMgr
-		//err = DiscoverQmgrMetadata(remoteQMgrName)
+		err = DiscoverQmgrMetadata(remoteQMgrName)
 		return nil
 	}
 
