@@ -178,7 +178,7 @@ func parseResponse() (map[string]*Response, error) {
 					case ibmmq.MQCFT_STRING:
 						resp.Values[paramName] = strings.TrimSpace(elem.String[0])
 					default:
-						//logp.Debug("", "Unhandeled parameter: %v type %v", normalizeMetricNames(elem.Parameter), ibmmq.MQItoString("CFT", int(elem.Type)))
+						logp.Debug("", "Unhandeled parameter: %v type %v", normalizeMetricNames(elem.Parameter), ibmmq.MQItoString("CFT", int(elem.Type)))
 					}
 				}
 			}
