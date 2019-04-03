@@ -160,6 +160,7 @@ func parseResponse() (map[string]*Response, error) {
 					key = resp.TargetObject
 				}
 			default:
+				logp.Debug("Mapping", "Current map: %v ", resp)
 				if normalizeMetricNames(elem.Parameter) != "" {
 					paramName := normalizeMetricNames(elem.Parameter)
 					switch elem.Type {
@@ -188,7 +189,6 @@ func parseResponse() (map[string]*Response, error) {
 		}
 	}
 	//Reset err if error is no more messages
-
 	return responses, nil
 
 }

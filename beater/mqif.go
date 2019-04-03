@@ -24,6 +24,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 */
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -148,6 +149,9 @@ func OpenCommandQueue(remoteQMgr string) error {
 		commandQueueOpen = true
 		remoteQMgrName = remoteQMgr
 		err = DiscoverQmgrMetadata(remoteQMgrName)
+		if err != nil {
+			logp.Error(err)
+		}
 		return nil
 	}
 
@@ -164,12 +168,24 @@ func DiscoverQmgrMetadata(remoteQMgr string) error {
 	data, err := getQManagerMetadata(remoteQMgr)
 
 	if err == nil {
+		logp.Info("Raw object: %v", data)
 		for _, obj := range data {
-			logp.Debug("Discover", "Raw object: %v", obj)
-			platform = int32(obj.Values["mqia_platform"].(int64))
-			commandLevel = int32(obj.Values["mqia_command_level"].(int64))
-			logp.Info("Successfully collected q mgr metadata. Name: %v, Platform: %v", obj.TargetObject, ibmmq.MQItoString("PL", int(platform)))
-			return nil
+			logp.Info("Raw object: %v", obj)
+			if obj.Values["mqia_platform"] != nil {
+				platform = int32(obj.Values["mqia_platform"].(int64))
+			} else {
+				platform = 0
+			}
+			if obj.Values["mqia_command_level"] != nil {
+				commandLevel = int32(obj.Values["mqia_command_level"].(int64))
+			} else {
+				commandLevel = 0
+			}
+			if platform != 0 && commandLevel != 0 {
+				logp.Info("Successfully collected q mgr metadata. Name: %v, Platform: %v", obj.TargetObject, ibmmq.MQItoString("PL", int(platform)))
+				return nil
+			}
+			return errors.New("Not able to get platfrom information")
 		}
 	}
 
@@ -237,7 +253,7 @@ func GetMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 
 	if wait {
 		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.WaitInterval = 2 * 1000
+		gmo.WaitInterval = 5 * 1000
 	}
 	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
 
