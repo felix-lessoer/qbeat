@@ -1,3 +1,0 @@
-=== traefik health MetricSet
-
-This is the health metricset of the module traefik.

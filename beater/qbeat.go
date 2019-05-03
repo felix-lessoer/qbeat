@@ -263,8 +263,14 @@ func collectLegacy(bt *Qbeat, b *beat.Beat) error {
 				return err
 			}
 
+			//chSavedStatus, err := getSavedChannelStatus(targetQMgrName, bt.config.Channel)
+			//if err != nil {
+			//	return err
+			//}
+
 			tmpEvents := createEvents(b.Info.Name, targetQMgrName, chMetadata)
 			events = append(events, mergeEventsWithResponseObj(tmpEvents, chStatus)...)
+			//events = append(events, mergeEventsWithResponseObj(tmpEvents, chSavedStatus)...)
 		}
 
 		if bt.config.LocalQueue != "" {

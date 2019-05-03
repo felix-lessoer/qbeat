@@ -22,7 +22,7 @@ var (
 )
 
 func getQueueStatistics(targetQMgrName string, localQueueName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_RESET_Q_STATS, params)
@@ -30,7 +30,7 @@ func getQueueStatistics(targetQMgrName string, localQueueName string) (map[strin
 }
 
 func getQueueStatus(targetQMgrName string, localQueueName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q_STATUS, params)
@@ -38,7 +38,7 @@ func getQueueStatus(targetQMgrName string, localQueueName string) (map[string]*R
 }
 
 func getQueueMetadata(targetQMgrName string, localQueueName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	params[ibmmq.MQCA_Q_NAME] = localQueueName
 
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q, params)
@@ -46,7 +46,7 @@ func getQueueMetadata(targetQMgrName string, localQueueName string) (map[string]
 }
 
 func getChannelMetadata(targetQMgrName string, channelName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
 
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_CHANNEL, params)
@@ -54,33 +54,42 @@ func getChannelMetadata(targetQMgrName string, channelName string) (map[string]*
 }
 
 func getChannelStatus(targetQMgrName string, channelName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
 
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS, params)
 	return parseResponse()
 }
 
+func getSavedChannelStatus(targetQMgrName string, channelName string) (map[string]*Response, error) {
+	var params = make(map[int32]interface{})
+	params[ibmmq.MQCACH_CHANNEL_NAME] = channelName
+	params[ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE] = ibmmq.MQOT_SAVED_CHANNEL
+
+	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS, params)
+	return parseResponse()
+}
+
 func getQManagerMetadata(targetQMgrName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q_MGR, params)
 	return parseResponse()
 }
 
 func getQManagerStatus(targetQMgrName string) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	err = putCommand(targetQMgrName, ibmmq.MQCMD_INQUIRE_Q_MGR_STATUS, params)
 	return parseResponse()
 }
 
 func getAdvancedResponse(targetQMgrName string, cmdString string, paramsInput map[string]interface{}) (map[string]*Response, error) {
-	var params = make(map[int32]string)
+	var params = make(map[int32]interface{})
 	var cmd int32
 
 	cmd = GetMQConstant(cmdString)
 	for paramNameString, paramValue := range paramsInput {
-		params[GetMQConstant(paramNameString)] = paramValue.(string)
+		params[GetMQConstant(paramNameString)] = paramValue
 	}
 
 	err = putCommand(targetQMgrName, cmd, params)
@@ -193,7 +202,7 @@ func parseResponse() (map[string]*Response, error) {
 
 }
 
-func putCommand(targetQMgrName string, commandCode int32, params map[int32]string) error {
+func putCommand(targetQMgrName string, commandCode int32, params map[int32]interface{}) error {
 	var buf []byte
 
 	//Insert command
@@ -230,11 +239,21 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]strin
 	// Add the parameters once at a time into a buffer
 	for paramType, paramValue := range params {
 		if paramType != 0 {
-			logp.Info("Param %v set to %v", ibmmq.MQItoString("CA", int(paramType)), paramValue)
 			pcfparm := new(ibmmq.PCFParameter)
-			pcfparm.Type = ibmmq.MQCFT_STRING
+			switch paramValue.(type) {
+			case string:
+				logp.Info("Param %v set to %v", ibmmq.MQItoString("CA", int(paramType)), paramValue)
+				pcfparm.Type = ibmmq.MQCFT_STRING
+				pcfparm.String = []string{paramValue.(string)}
+			case int32:
+				logp.Info("Param %v set to %v", ibmmq.MQItoString("IA", int(paramType)), paramValue)
+				pcfparm.Type = ibmmq.MQCFT_INTEGER
+				pcfparm.Int64Value = []int64{int64(paramValue.(int32))}
+			default:
+				logp.Info("Param type not supported")
+			}
 			pcfparm.Parameter = paramType
-			pcfparm.String = []string{paramValue}
+
 			cfh.ParameterCount++
 			buf = append(buf, pcfparm.Bytes()...)
 		}

@@ -168,9 +168,7 @@ func DiscoverQmgrMetadata(remoteQMgr string) error {
 	data, err := getQManagerMetadata(remoteQMgr)
 
 	if err == nil {
-		logp.Info("Raw object: %v", data)
 		for _, obj := range data {
-			logp.Info("Raw object: %v", obj)
 			if obj.Values["mqia_platform"] != nil {
 				platform = int32(obj.Values["mqia_platform"].(int64))
 			} else {
@@ -253,7 +251,7 @@ func GetMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 
 	if wait {
 		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.WaitInterval = 5 * 1000
+		gmo.WaitInterval = 2 * 1000
 	}
 	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
 
