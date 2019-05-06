@@ -2,6 +2,7 @@ package beater
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -333,7 +334,9 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 	}
 
 	logp.Info("Trying to connect to %v", bt.config.QueueManager)
-
+	if bt.config.QueueManager == "" {
+		return errors.New("Queue manager not set in your configuration file")
+	}
 	if legacy {
 		err = connectLegacyMode(bt)
 		if err != nil {
