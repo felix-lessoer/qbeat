@@ -1,19 +1,36 @@
-# Qbeat
+# qBeat
 
-Welcome to Qbeat. This beat is used to get monitoring / statistics data out of IBM MQ.
-It is currently under development so there is no guarantee that it is working fine.
+Welcome to qBeat. This beat is used to get monitoring / statistics data out of IBM MQ.
+It is currently under development so there is no guarantee that it is working fine in all cases.
 
 Ensure that this folder is at the following location:
 `${GOPATH}/src/github.com/felix-lessoer/qbeat`
 
-As this is under development it would be great if you could share Feedback using Github issues.
+As this is under development it would be great if you could share feedback using Github issues.
+
+## Features
+* Collect Q Manager Status
+* Collect Q Status and Statistics
+* Collect Channel Status
+* Collect any response of an Inquire PCF message
+* Collect error logs with Filebeat
+* Correlate data between Metrics and Logs
+* Collect data from remote queue managers
+* Collect data from local and remote environments including cloud
+* Ready to start using Kibana objects
+
+## Current status
+This implementation will be merged into 
+* [Metricbeat](https://www.elastic.co/de/products/beats/metricbeat) (also see [PR](https://github.com/elastic/beats/pull/8870))
+* [Filebeat](https://www.elastic.co/de/products/beats/fetricbeat) (also see [PR](https://github.com/elastic/beats/pull/8782))
 
 ## Getting Started with Qbeat
 
 ### Requirements
 
-* [Golang](https://golang.org/dl/) 1.7 (for Windows 1.10)
-* [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with v.9 but should also work with older versions
+* [Golang](https://golang.org/dl/) >v1.7 (for Windows 1.10)
+* [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with >v8 but should also work with older versions
+* [Elastic Stack](https://cloud.elastic.co) >v7.0
 
 Make sure that the "Path to MQ lib" folders exists in your env and that the beat user has sufficient permissions to the files before building and running the beat.
 If necessary the MQ lib path can be changed in the source files (mqi.go)
@@ -66,6 +83,16 @@ If necessary the MQ lib path can be changed in the source files (mqi.go)
 
 Download the file to your workstation and upload it via Kibana. It will setup all necessary objects. But not all visualizations will work without changing the default data model of the beat. Also Machine Learning Jobs are not included.
 [Download here](https://github.com/felix-lessoer/qbeat/blob/master/Kibana/MQ-Demo-objects.json)
+
+### Configuration
+
+The general configuration file is qbeat.yml . There are multiple configurations that are available:
+
+* period[required]: Defines after which period of time the data should be collected
+* bindingQueueManager[required]: Defines the queue manager that is used to collect the metrics. Need to be available in your local setup of via the MQ configured in the connection config 
+* targetQueueManager: Array of queue manager names. Defines the remote queue managers that should be used to collect metrics. If not defined the binding queue manager will be used. A remote queue manager need to be accessible from the bindingQueueManager. Multiple hops are possible.
+
+* More details can be found in qbeat.yml
 
 ### Init Project
 To get running with Qbeat and also install the
