@@ -1,11 +1,12 @@
 # About qBeat
 
 Welcome to qBeat. This beat is used to get monitoring / statistics data out of IBM MQ.
-It is currently under development so there is no guarantee that it is working fine in all cases.
 
 What is a beat? A beat is a lightweight data shipper written in GOLANG developed by Elastic N.V. and the community. It is open source and also implements a framework offered to the community to build their own beats. Those beats may offer special purpose data collection not offered by existing beats. Machinebeat is one of those special purpose beats.
 
-As this is under development it would be great if you could share feedback using Github issues.
+This version of the beat is working fine, but you need to compile it in your environment. You need to have IBM MQ installed in that environment as it is referring to the C library.
+
+It would be great if you could share feedback using Github issues.
 
 ## Features
 * Collect Q Manager Status
