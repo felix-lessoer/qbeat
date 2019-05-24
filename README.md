@@ -1,10 +1,9 @@
-# qBeat
+# About qBeat
 
 Welcome to qBeat. This beat is used to get monitoring / statistics data out of IBM MQ.
 It is currently under development so there is no guarantee that it is working fine in all cases.
 
-Ensure that this folder is at the following location:
-`${GOPATH}/src/github.com/felix-lessoer/qbeat`
+What is a beat? A beat is a lightweight data shipper written in GOLANG developed by Elastic N.V. and the community. It is open source and also implements a framework offered to the community to build their own beats. Those beats may offer special purpose data collection not offered by existing beats. Machinebeat is one of those special purpose beats.
 
 As this is under development it would be great if you could share feedback using Github issues.
 
@@ -31,6 +30,9 @@ This implementation will be merged into
 * [Golang](https://golang.org/dl/) >v1.7 (for Windows 1.10)
 * [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with >v8 but should also work with older versions
 * [Elastic Stack](https://cloud.elastic.co) >v7.0
+
+Ensure that this folder is at the following location:
+`${GOPATH}/src/github.com/felix-lessoer/qbeat`
 
 Make sure that the "Path to MQ lib" folders exists in your env and that the beat user has sufficient permissions to the files before building and running the beat.
 If necessary the MQ lib path can be changed in the source files (mqi.go)
