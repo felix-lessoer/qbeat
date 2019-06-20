@@ -169,17 +169,14 @@ func parseResponse() (map[string]*Response, error) {
 					key = resp.TargetObject
 				}
 			default:
-				logp.Debug("Mapping", "Current map: %v ", resp)
 				if normalizeMetricNames(elem.Parameter) != "" {
 					paramName := normalizeMetricNames(elem.Parameter)
 					switch elem.Type {
 					case ibmmq.MQCFT_INTEGER:
 						resp.Values[paramName] = elem.Int64Value[0]
-						logp.Debug("", "Try to translate %v: %v", paramName, elem.Int64Value[0])
 						strValue := translateValue(paramName, elem.Int64Value[0])
 						if strValue != "" {
 							resp.Values[paramName+"_str"] = strValue
-							logp.Debug("", "Translation successfull")
 						}
 					case ibmmq.MQCFT_INTEGER_LIST:
 						for k, v := range elem.Int64Value {
