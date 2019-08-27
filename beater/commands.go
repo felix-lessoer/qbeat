@@ -161,12 +161,14 @@ func parseResponse() (map[string]*Response, error) {
 					key = resp.TargetObject
 				}
 			case ibmmq.MQCA_Q_MGR_NAME, ibmmq.MQCACF_RESPONSE_Q_MGR_NAME:
-				for i := 0; i < len(elem.String); i++ {
-					logp.Debug("", "Current queueManager %v", strings.TrimSpace(elem.String[i]))
-					resp.TargetObject = strings.TrimSpace(elem.String[i])
-					resp.Metricset = "QueueManager"
-					resp.Metrictype = "Status"
-					key = resp.TargetObject
+				if resp.Metricset == "" {
+					for i := 0; i < len(elem.String); i++ {
+						logp.Debug("", "Current queueManager %v", strings.TrimSpace(elem.String[i]))
+						resp.TargetObject = strings.TrimSpace(elem.String[i])
+						resp.Metricset = "QueueManager"
+						resp.Metrictype = "Status"
+						key = resp.TargetObject
+					}
 				}
 			default:
 				if normalizeMetricNames(elem.Parameter) != "" {
