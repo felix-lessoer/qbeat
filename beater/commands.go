@@ -216,6 +216,13 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]inter
 	putmqmd.MsgType = ibmmq.MQMT_REQUEST
 	putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
+	//Check weather persistent is configured explicitly. Otherwise reply queue default is used
+	switch conf.Persistence {
+	case "persistent":
+		putmqmd.Persistence = ibmmq.MQPER_PERSISTENT
+	case "not_persistent":
+		putmqmd.Persistence = ibmmq.MQPER_NOT_PERSISTENT
+	}
 	// Reset QStats
 	cfh := ibmmq.NewMQCFH()
 	cfh.Version = ibmmq.MQCFH_VERSION_3

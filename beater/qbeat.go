@@ -31,6 +31,7 @@ type RequestObject struct {
 var (
 	first      = true
 	errorCount = 0
+	conf       config.Config
 )
 
 // New creates an instance of qbeat.
@@ -52,7 +53,7 @@ func connectPubSub(bt *Qbeat) error {
 
 	// Connect to MQ
 	logp.Info("Connect to QM %v start", bt.config.QueueManager)
-	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
+	err = InitConnection(bt.config.QueueManager, bt.config.ReplyQueue, &bt.config.CC)
 	if err == nil {
 		logp.Info("Connected to queue manager %v with client mode %v", bt.config.QueueManager, bt.config.CC.ClientMode)
 	}
@@ -135,7 +136,7 @@ func collectPubSub(bt *Qbeat, b *beat.Beat) {
 func connectLegacyMode(bt *Qbeat) error {
 	logp.Info("Connect in legacy mode with client mode %v", bt.config.CC.ClientMode)
 
-	err = InitConnection(bt.config.QueueManager, "SYSTEM.DEFAULT.MODEL.QUEUE", &bt.config.CC)
+	err = InitConnection(bt.config.QueueManager, bt.config.ReplyQueue, &bt.config.CC)
 	//err = connectLegacy(bt.config.QueueManager, bt.config.RemoteQueueManager)
 
 	if err != nil {
@@ -322,6 +323,7 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 	logp.Info("qbeat is running! Hit CTRL-C to stop it.")
 
 	var err error
+	conf = bt.config
 
 	bt.client, err = b.Publisher.Connect()
 	if err != nil {

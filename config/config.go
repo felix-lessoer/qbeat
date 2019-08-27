@@ -25,6 +25,8 @@ type Config struct {
 	QMgrStat           bool             `config:"queueManagerStatus"`
 	PubSub             bool             `config:"pubSub"`
 	Advanced           string           `config:"advanced"`
+	ReplyQueue         string           `config:"replyQueue"`
+	Persistence        string           `config:"persistence"`
 	CC                 ConnectionConfig `config:"cc"`
 }
 
@@ -38,6 +40,8 @@ var (
 		QueueStats:         true,
 		Channel:            "*",
 		Advanced:           "",
+		ReplyQueue:         "SYSTEM.DEFAULT.MODEL.QUEUE",
+		Persistence:        "default",
 		CC: ConnectionConfig{
 			ClientMode: false,
 			UserId:     "",
