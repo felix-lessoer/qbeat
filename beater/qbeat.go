@@ -368,8 +368,8 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 			if qmgrConnected == false {
 				err = connectLegacyMode(bt)
 				if err != nil {
-					logp.Critical("Wasn't able to connect due to an error")
-					return err
+					logp.Critical("Wasn't able to re-connect due to an error. Will try again after the next period.")
+					logp.Err(err.Error())
 				}
 			}
 			err = collectLegacy(bt, b)
@@ -379,15 +379,15 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 				err = connectPubSub(bt)
 
 				if err != nil {
-					logp.Critical("Wasn't able to connect due to an error")
-					return err
+					logp.Critical("Wasn't able to re-connect due to an error. Will try again after the next period.")
+					logp.Err(err.Error())
 				}
 			}
 			collectPubSub(bt, b)
 		}
 
 		if err != nil {
-			return err
+			logp.Err(err.Error())
 		}
 
 		//This is to ignore the first chunk of data because this can have inappropiate data
@@ -397,7 +397,7 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 			continue
 		}
 
-		logp.Info("Events sent")
+		logp.Info("Events sent - waiting for next period")
 	}
 }
 
