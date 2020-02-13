@@ -272,6 +272,7 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]inter
 	if err != nil {
 		logp.Info("Error putting the command into command queue")
 		logp.Info("%v", err)
+		qmgrConnected = false
 	}
 
 	return err

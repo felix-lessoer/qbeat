@@ -365,9 +365,24 @@ func (bt *Qbeat) Run(b *beat.Beat) error {
 		}
 
 		if legacy {
+			if qmgrConnected == false {
+				err = connectLegacyMode(bt)
+				if err != nil {
+					logp.Critical("Wasn't able to connect due to an error")
+					return err
+				}
+			}
 			err = collectLegacy(bt, b)
 		}
 		if bt.config.PubSub {
+			if qmgrConnected == false {
+				err = connectPubSub(bt)
+
+				if err != nil {
+					logp.Critical("Wasn't able to connect due to an error")
+					return err
+				}
+			}
 			collectPubSub(bt, b)
 		}
 
