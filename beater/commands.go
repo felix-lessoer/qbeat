@@ -225,6 +225,11 @@ func putCommand(targetQMgrName string, commandCode int32, params map[int32]inter
 	case "not_persistent":
 		putmqmd.Persistence = ibmmq.MQPER_NOT_PERSISTENT
 	}
+
+	if conf.Expiry > 0 {
+		putmqmd.Expiry = conf.Expiry
+	}
+
 	// Reset QStats
 	cfh := ibmmq.NewMQCFH()
 	cfh.Version = ibmmq.MQCFH_VERSION_3

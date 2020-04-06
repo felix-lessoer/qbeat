@@ -27,6 +27,7 @@ type Config struct {
 	Advanced           string           `config:"advanced"`
 	ReplyQueue         string           `config:"replyQueue"`
 	Persistence        string           `config:"persistence"`
+	Expiry             int32            `config:"expiry"`
 	CC                 ConnectionConfig `config:"cc"`
 }
 
@@ -42,6 +43,7 @@ var (
 		Advanced:           "",
 		ReplyQueue:         "SYSTEM.DEFAULT.MODEL.QUEUE",
 		Persistence:        "default",
+		Expiry:             0,
 		CC: ConnectionConfig{
 			ClientMode: false,
 			UserId:     "",
