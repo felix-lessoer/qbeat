@@ -28,7 +28,7 @@ This implementation will be merged into
 
 ### Requirements
 
-* [Golang](https://golang.org/dl/) >v1.7 (for Windows 1.10)
+* [Golang](https://golang.org/dl/) >v1.17
 * [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with >v8 but should also work with older versions
 * [Elastic Stack](https://cloud.elastic.co) >v7.0
 
@@ -97,89 +97,14 @@ The general configuration file is qbeat.yml . There are multiple configurations 
 
 * More details can be found in qbeat.yml
 
-### Init Project
-To get running with Qbeat and also install the
-dependencies, run the following command:
+## How to build on your own env
 
+1.) Download all dependencies from go.mod using `go get -u`
+
+2.) You may need to overwrite some modules with the following versions that do not support go.mod in older versions
 ```
-make setup
+go get k8s.io/client-go@kubernetes-1.14.8
+go get k8s.io/api@kubernetes-1.14.8
+go get k8s.io/apimachinery@kubernetes-1.14.8
 ```
-
-It will create a clean git history for each major step. Note that you can always rewrite the history if you wish before pushing your changes.
-
-To push Qbeat in the git repository, run the following commands:
-
-```
-git remote set-url origin https://github.com/felix-lessoer/qbeat
-git push origin master
-```
-
-For further development, check out the [beat developer guide](https://www.elastic.co/guide/en/beats/libbeat/current/new-beat.html).
-
-### Build
-
-To build the binary for Qbeat run the command below. This will generate a binary
-in the same directory with the name qbeat.
-
-```
-make
-```
-
-
-### Run
-
-To run Qbeat with debugging output enabled, run:
-
-```
-./qbeat -c qbeat.yml -e -d "*"
-```
-
-
-### Update
-
-Each beat has a template for the mapping in elasticsearch and a documentation for the fields
-which is automatically generated based on `fields.yml` by running the following command.
-
-```
-make update
-```
-
-
-### Cleanup
-
-To clean  Qbeat source code, run the following commands:
-
-```
-make fmt
-make simplify
-```
-
-To clean up the build directory and generated artifacts, run:
-
-```
-make clean
-```
-
-
-### Clone
-
-To clone Qbeat from the git repository, run the following commands:
-
-```
-mkdir -p ${GOPATH}/src/github.com/felix-lessoer/qbeat
-git clone https://github.com/felix-lessoer/qbeat ${GOPATH}/src/github.com/felix-lessoer/qbeat
-```
-
-
-For further development, check out the [beat developer guide](https://www.elastic.co/guide/en/beats/libbeat/current/new-beat.html).
-
-
-## Packaging
-
-The beat frameworks provides tools to crosscompile and package your beat for different platforms. This requires [docker](https://www.docker.com/) and vendoring as described above. To build packages of your beat, run the following command:
-
-```
-make package
-```
-
-This will fetch and create all images required for the build process. The whole process to finish can take several minutes.
+3.) Run `go build` in the machinebeat repository
