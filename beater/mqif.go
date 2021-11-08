@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/beats/libbeat/logp"
+	"github.com/elastic/beats/v7/libbeat/logp"
 	"github.com/felix-lessoer/qbeat/beater/ibmmq"
 	"github.com/felix-lessoer/qbeat/config"
 )
