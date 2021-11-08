@@ -107,4 +107,4 @@ go get k8s.io/client-go@kubernetes-1.14.8
 go get k8s.io/api@kubernetes-1.14.8
 go get k8s.io/apimachinery@kubernetes-1.14.8
 ```
-3.) Run `go build` in the machinebeat repository
+3.) Run `go build` in the qbeat repository
