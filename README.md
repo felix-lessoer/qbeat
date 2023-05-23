@@ -26,7 +26,11 @@ This implementation will be merged into
 
 ## Getting Started with Qbeat
 
-### Requirements
+### Running Qbeat in a docker container
+
+Simply run the provided docker-compose file with `docker compose up -d`
+
+### Requirements for building Qbeat
 
 * [Golang](https://golang.org/dl/) >v1.17
 * [IBM MQ](https://www.ibm.com/de-de/marketplace/secure-messaging) Tested with >v8 but should also work with older versions
