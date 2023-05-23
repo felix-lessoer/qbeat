@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   qbeat:
-    image: qbeat
+    build: .
     volumes:
       - ./qbeat.yml:/usr/share/qbeat/qbeat.yml
     
